@@ -89,6 +89,65 @@ tbody td{padding:9px 12px;color:var(--text-primary);white-space:nowrap;}
 ::-webkit-scrollbar-thumb{background:var(--teal-dark);border-radius:3px;}
 @media(max-width:1200px){.kpi-strip{grid-template-columns:repeat(3,1fr)}.row-3{grid-template-columns:1fr 1fr}}
 @media(max-width:768px){.kpi-strip{grid-template-columns:1fr 1fr}.row-2,.row-2b,.row-3{grid-template-columns:1fr}.header-center{display:none}}
+.filter-bar {
+  background: #0D1A1A;
+  border-bottom: 1px solid var(--grid-line);
+  padding: 10px 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.filter-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+select {
+  background: #1A2A2A;
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  border-radius: 5px;
+  padding: 6px 28px 6px 10px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2300B4B4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color 0.2s;
+}
+select:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+.reset-btn {
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.reset-btn:hover {
+  background: var(--red);
+  color: #fff;
+}
+.no-data-placeholder {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 20px 0;
+}
 </style>
 </head>
 <body>
@@ -105,10 +164,16 @@ tbody td{padding:9px 12px;color:var(--text-primary);white-space:nowrap;}
   </div>
 </header>
 
-<div class="filter-info">
-  <span style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-right:4px;">Applied Filters:</span>
-  <span style="font-size:12px;color:var(--text-muted);">None (showing all data)</span>
-  <span class="record-count" style="margin-left:auto;">Total Records: <b>15,030</b></span>
+<div class="filter-bar">
+  <span class="filter-label">Filters:</span>
+  <select id="filterMonth"><option value="">All Months</option></select>
+  <select id="filterSource"><option value="">All Lead Sources</option></select>
+  <select id="filterStage"><option value="">All Stages</option></select>
+  <select id="filterOwner"><option value="">All Owners</option></select>
+  <select id="filterCollege"><option value="">All Colleges</option></select>
+  <select id="filterCourse"><option value="">All Courses</option></select>
+  <button class="reset-btn" onclick="resetFilters()">✕ Reset</button>
+  <span class="record-count" id="recordCount">Total Records: <b>15,030</b> (showing top 200)</span>
 </div>
 
 <div class="main">
@@ -156,7 +221,7 @@ tbody td{padding:9px 12px;color:var(--text-primary);white-space:nowrap;}
       </div>
       <div class="donut-layout">
         <div class="chart-wrap" style="flex:1;max-width:160px;"><canvas id="cSrc"></canvas></div>
-        <div class="donut-legend">
+        <div class="donut-legend" id="legendSrc">
           <div class="legend-item">
             <div class="legend-dot" style="background:#00B4B4"></div>
             <span class="legend-label">Facebook</span>
@@ -201,7 +266,7 @@ tbody td{padding:9px 12px;color:var(--text-primary);white-space:nowrap;}
       </div>
       <div class="donut-layout">
         <div class="chart-wrap" style="flex:1;max-width:160px;"><canvas id="cStg"></canvas></div>
-        <div class="donut-legend">
+        <div class="donut-legend" id="legendStg">
           <div class="legend-item">
             <div class="legend-dot" style="background:#00B4B4"></div>
             <span class="legend-label">Not Interested</span>
@@ -268,7 +333,7 @@ tbody td{padding:9px 12px;color:var(--text-primary);white-space:nowrap;}
         <div><div class="card-title">Top Cities</div><div class="card-subtitle">Lead density by location</div></div>
         <span class="card-badge red">Geo</span>
       </div>
-      <div class="bar-list" style="padding-top:4px;">
+      <div class="bar-list" id="barCities" style="padding-top:4px;">
           <div class="bar-row">
             <div class="bar-meta">
               <span class="bar-name" title="Unknown">Unknown</span>
@@ -352,7 +417,7 @@ tbody td{padding:9px 12px;color:var(--text-primary);white-space:nowrap;}
         <div><div class="card-title">Top Courses Interested In</div><div class="card-subtitle">Program demand ranking</div></div>
         <span class="card-badge">Courses</span>
       </div>
-      <div class="bar-list" style="padding-top:4px;">
+      <div class="bar-list" id="barCourses" style="padding-top:4px;">
           <div class="bar-row">
             <div class="bar-meta">
               <span class="bar-name" title="BALLB">BALLB</span>
@@ -423,36 +488,371 @@ const PALETTE=["#00B4B4","#E8192C","#00AACC","#FF6644","#00CC88","#CC4488","#88A
 const STAGE_COLORS=["#00B4B4","#00CC88","#E8192C","#FFA500","#7ABABA","#FF6677","#CC44AA","#AACCAA"];
 const tooltipDefaults={backgroundColor:'#1A2A2A',titleColor:TEAL,bodyColor:'#E8F4F4',borderColor:'rgba(0,180,180,0.3)',borderWidth:1};
 
-function mkDonut(id,labels,values,colors){
-  const ctx=document.getElementById(id);
-  if(!ctx||!values.length)return;
-  new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:2,borderColor:'#141C1C'}]},options:{responsive:true,maintainAspectRatio:true,cutout:'72%',plugins:{legend:{display:false},tooltip:{...tooltipDefaults,callbacks:{label:c=>' '+c.label+': '+c.raw.toLocaleString()+' ('+((c.raw/values.reduce((a,b)=>a+b,0))*100).toFixed(1)+'%)'}}}}}); 
-}
-function mkLine(id,labels,values){
-  const ctx=document.getElementById(id);
-  if(!ctx||!values.length)return;
-  const g=ctx.getContext('2d').createLinearGradient(0,0,0,200);
-  g.addColorStop(0,'rgba(0,180,180,0.35)');g.addColorStop(1,'rgba(0,180,180,0.01)');
-  new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Leads',data:values,borderColor:TEAL,backgroundColor:g,borderWidth:2.5,pointBackgroundColor:TEAL,pointRadius:4,fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'rgba(0,180,180,0.07)'},ticks:{color:'#7ABABA',font:{size:11}}},y:{grid:{color:'rgba(0,180,180,0.07)'},ticks:{color:'#7ABABA',font:{size:11}}}},plugins:{legend:{display:false},tooltip:tooltipDefaults}}});
-}
-function mkHBar(id,labels,values){
-  const ctx=document.getElementById(id);
-  if(!ctx||!values.length)return;
-  const gc=ctx.getContext('2d');
-  const grads=values.map((_,i)=>{const g2=gc.createLinearGradient(0,0,400,0);g2.addColorStop(0,i%2===0?TEAL2:RED2);g2.addColorStop(1,i%2===0?TEAL:RED);return g2;});
-  new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Leads',data:values,backgroundColor:grads,borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'rgba(0,180,180,0.07)'},ticks:{color:'#7ABABA',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#E8F4F4',font:{size:12}}}},plugins:{legend:{display:false},tooltip:tooltipDefaults}}});
-}
-function mkVBar(id,labels,values,colors){
-  const ctx=document.getElementById(id);
-  if(!ctx||!values.length)return;
-  new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Leads',data:values,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false},ticks:{color:'#7ABABA',font:{size:11},maxRotation:30}},y:{grid:{color:'rgba(0,180,180,0.07)'},ticks:{color:'#7ABABA',font:{size:11}}}},plugins:{legend:{display:false},tooltip:tooltipDefaults}}});
+const charts = {};
+
+function toggleNoData(id, hasData) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const parent = ctx.parentElement;
+  let noDataEl = parent.querySelector('.no-data-placeholder');
+  if (!hasData) {
+    ctx.style.display = 'none';
+    if (!noDataEl) {
+      noDataEl = document.createElement('div');
+      noDataEl.className = 'no-data-placeholder';
+      noDataEl.textContent = 'No data available';
+      parent.appendChild(noDataEl);
+    }
+    noDataEl.style.display = '';
+  } else {
+    ctx.style.display = '';
+    if (noDataEl) noDataEl.style.display = 'none';
+  }
 }
 
-mkDonut('cSrc',["Facebook","google","WhatsApp-ALC","WhatsApp-ABS","Google","demgen","AGL-Google"],[9145,4605,504,492,165,112,7],PALETTE);
-mkDonut('cStg',["Not Interested","Re-prospect","Invalid","Called Fourth","Called Once","Basic Counselling","Not Responding","Called Twice"],[3764,1989,1761,1442,1209,1016,801,629],STAGE_COLORS);
-mkLine('cMonth',["Jan","Feb","Mar","Apr","May","Dec"],[1781,2463,3866,3967,2805,148]);
-mkHBar('cOwner',["Meenal Agrawal","Ritu Sehajpal","Karishma Chanana","Tanya Jain","Komal Arora","Richa Khanduja","manali kumari","Neha Chawla","Juhi Sharma","kamini Sharma"],[1119,1092,1085,1081,1078,1055,965,946,903,854]);
-mkVBar('cCamp',["HO_ALC_Leads_BA_LLB_Other_Jan26","HO_ALC_Leads_BA_LLB_Jan26","Unknown","HO_ALC_Leads_LLB_Jan26","HO_ALC_Leads_LLB_Other_Jan26","HO_ALC_Search_Generic_Phrase_Mar26","HO_ALC_Search_Generic_Phrase_Mar26_OtherCities","HO_ALC_Search_Generic_Phrase_Jan25"],[3457,2773,1255,958,878,451,430,416],PALETTE.slice(0,8));
+function mkDonut(id,labels,values,colors){
+  if(charts[id]) charts[id].destroy();
+  toggleNoData(id, values.length > 0);
+  if(!values.length) return;
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts[id] = new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:2,borderColor:'#141C1C'}]},options:{responsive:true,maintainAspectRatio:true,cutout:'72%',plugins:{legend:{display:false},tooltip:{...tooltipDefaults,callbacks:{label:c=>' '+c.label+': '+c.raw.toLocaleString()+' ('+((c.raw/values.reduce((a,b)=>a+b,0))*100).toFixed(1)+'%)'}}}}}); 
+}
+function mkLine(id,labels,values){
+  if(charts[id]) charts[id].destroy();
+  toggleNoData(id, values.length > 0);
+  if(!values.length) return;
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  const g=ctx.getContext('2d').createLinearGradient(0,0,0,200);
+  g.addColorStop(0,'rgba(0,180,180,0.35)');g.addColorStop(1,'rgba(0,180,180,0.01)');
+  charts[id] = new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Leads',data:values,borderColor:TEAL,backgroundColor:g,borderWidth:2.5,pointBackgroundColor:TEAL,pointRadius:4,fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'rgba(0,180,180,0.07)'},ticks:{color:'#7ABABA',font:{size:11}}},y:{grid:{color:'rgba(0,180,180,0.07)'},ticks:{color:'#7ABABA',font:{size:11}}}},plugins:{legend:{display:false},tooltip:tooltipDefaults}}});
+}
+function mkHBar(id,labels,values){
+  if(charts[id]) charts[id].destroy();
+  toggleNoData(id, values.length > 0);
+  if(!values.length) return;
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  const gc=ctx.getContext('2d');
+  const grads=values.map((_,i)=>{const g2=gc.createLinearGradient(0,0,400,0);g2.addColorStop(0,i%2===0?TEAL2:RED2);g2.addColorStop(1,i%2===0?TEAL:RED);return g2;});
+  charts[id] = new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Leads',data:values,backgroundColor:grads,borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'rgba(0,180,180,0.07)'},ticks:{color:'#7ABABA',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#E8F4F4',font:{size:12}}}},plugins:{legend:{display:false},tooltip:tooltipDefaults}}});
+}
+function mkVBar(id,labels,values,colors){
+  if(charts[id]) charts[id].destroy();
+  toggleNoData(id, values.length > 0);
+  if(!values.length) return;
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts[id] = new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Leads',data:values,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false},ticks:{color:'#7ABABA',font:{size:11},maxRotation:30}},y:{grid:{color:'rgba(0,180,180,0.07)'},ticks:{color:'#7ABABA',font:{size:11}}}},plugins:{legend:{display:false},tooltip:tooltipDefaults}}});
+}
+
+// Global parsed data structures
+let rawData = [];
+let filteredData = [];
+
+// Static snapshot values
+const originalKPIs = {
+  total: "15,030",
+  converted: "0",
+  convertedMeta: "0.0% conversion rate",
+  hot: "0",
+  hotMeta: "0.0% of total leads",
+  cities: "3831",
+  owners: "39"
+};
+
+const originalCharts = {
+  cSrc: {
+    labels: ["Facebook","google","WhatsApp-ALC","WhatsApp-ABS","Google","demgen","AGL-Google"],
+    values: [9145,4605,504,492,165,112,7],
+    colors: PALETTE
+  },
+  cStg: {
+    labels: ["Not Interested","Re-prospect","Invalid","Called Fourth","Called Once","Basic Counselling","Not Responding","Called Twice"],
+    values: [3764,1989,1761,1442,1209,1016,801,629],
+    colors: STAGE_COLORS
+  },
+  cMonth: {
+    labels: ["Jan","Feb","Mar","Apr","May","Dec"],
+    values: [1781,2463,3866,3967,2805,148]
+  },
+  cOwner: {
+    labels: ["Meenal Agrawal","Ritu Sehajpal","Karishma Chanana","Tanya Jain","Komal Arora","Richa Khanduja","manali kumari","Neha Chawla","Juhi Sharma","kamini Sharma"],
+    values: [1119,1092,1085,1081,1078,1055,965,946,903,854]
+  },
+  cCamp: {
+    labels: ["HO_ALC_Leads_BA_LLB_Other_Jan26","HO_ALC_Leads_BA_LLB_Jan26","Unknown","HO_ALC_Leads_LLB_Jan26","HO_ALC_Leads_LLB_Other_Jan26","HO_ALC_Search_Generic_Phrase_Mar26","HO_ALC_Search_Generic_Phrase_Mar26_OtherCities","HO_ALC_Search_Generic_Phrase_Jan25"],
+    values: [3457,2773,1255,958,878,451,430,416]
+  },
+  cities: [
+    ["Unknown", 1697],
+    ["Delhi", 1510],
+    ["Noida", 336],
+    ["New Delhi", 316],
+    ["Lucknow", 303],
+    ["Ghaziabad", 260],
+    ["Patna", 242],
+    ["Jaipur", 158]
+  ],
+  courses: [
+    ["BALLB", 8308],
+    ["LLB", 3631],
+    ["PGDM", 2767],
+    ["BComLLB", 324]
+  ]
+};
+
+function parseTableData() {
+  const keys = ["Prospect ID", "First Name", "Lead Source", "Source Campaign", "Source Medium", "Job Title", "Source Content", "Lead Stage", "Created On", "Month", "City", "Owner", "Course Interested In", "College"];
+  const rows = Array.from(document.querySelectorAll('tbody tr'));
+  rawData = rows.map(tr => {
+    const cells = Array.from(tr.querySelectorAll('td'));
+    const obj = {};
+    keys.forEach((key, index) => {
+      if (cells[index]) {
+        obj[key] = cells[index].textContent.trim();
+      } else {
+        obj[key] = '';
+      }
+    });
+    obj._tr = tr;
+    return obj;
+  });
+  filteredData = [...rawData];
+}
+
+function freq(data, key) {
+  const map = {};
+  data.forEach(r => {
+    const v = r[key] || 'Unknown';
+    map[v] = (map[v]||0)+1;
+  });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+}
+
+function updateDonutLegend(chartId, labels, values, colors) {
+  const legendId = chartId === 'cSrc' ? 'legendSrc' : 'legendStg';
+  const legendEl = document.getElementById(legendId);
+  if (!legendEl) return;
+  
+  const total = values.reduce((a,b)=>a+b,0);
+  if (!total) {
+    legendEl.innerHTML = '';
+    return;
+  }
+  
+  legendEl.innerHTML = labels.map((label, i) => {
+    const pct = total > 0 ? ((values[i]/total)*100).toFixed(0) : '0';
+    return `
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${colors[i%colors.length]}"></div>
+        <span class="legend-label">${label}</span>
+        <span class="legend-val">${pct}%</span>
+      </div>`;
+  }).join('');
+}
+
+function renderStaticBarList(type, items, barClass) {
+  const id = type === 'cities' ? 'barCities' : 'barCourses';
+  const el = document.getElementById(id);
+  if (!el) return;
+  
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px 0;">No data available</div>';
+    return;
+  }
+  
+  const max = items[0][1];
+  el.innerHTML = items.map((item, i) => {
+    const pct = max > 0 ? ((item[1]/max)*100).toFixed(1) : '0';
+    return `
+      <div class="bar-row">
+        <div class="bar-meta">
+          <span class="bar-name" title="${item[0]}">${item[0]}</span>
+          <span class="bar-count">${item[1].toLocaleString()}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill ${i===0?barClass:i%3===0?'accent':''}" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderDynamicBarList(type, entries, barClass) {
+  renderStaticBarList(type, entries, barClass);
+}
+
+function updateKPIsAndCharts(isAnyFilterActive) {
+  const kpiTotalVal = document.querySelector('.kpi-strip .kpi-card:nth-child(1) .kpi-value');
+  const kpiTotalMeta = document.querySelector('.kpi-strip .kpi-card:nth-child(1) .kpi-meta');
+  const kpiConvVal = document.querySelector('.kpi-strip .kpi-card:nth-child(2) .kpi-value');
+  const kpiConvMeta = document.querySelector('.kpi-strip .kpi-card:nth-child(2) .kpi-meta');
+  const kpiHotVal = document.querySelector('.kpi-strip .kpi-card:nth-child(3) .kpi-value');
+  const kpiHotMeta = document.querySelector('.kpi-strip .kpi-card:nth-child(3) .kpi-meta');
+  const kpiCitVal = document.querySelector('.kpi-strip .kpi-card:nth-child(4) .kpi-value');
+  const kpiCitMeta = document.querySelector('.kpi-strip .kpi-card:nth-child(4) .kpi-meta');
+  const kpiOwnVal = document.querySelector('.kpi-strip .kpi-card:nth-child(5) .kpi-value');
+  const kpiOwnMeta = document.querySelector('.kpi-strip .kpi-card:nth-child(5) .kpi-meta');
+
+  if (!isAnyFilterActive) {
+    if(kpiTotalVal) kpiTotalVal.textContent = originalKPIs.total;
+    if(kpiTotalMeta) kpiTotalMeta.textContent = "Active in pipeline";
+    if(kpiConvVal) kpiConvVal.textContent = originalKPIs.converted;
+    if(kpiConvMeta) kpiConvMeta.textContent = originalKPIs.convertedMeta;
+    if(kpiHotVal) kpiHotVal.textContent = originalKPIs.hot;
+    if(kpiHotMeta) kpiHotMeta.textContent = originalKPIs.hotMeta;
+    if(kpiCitVal) kpiCitVal.textContent = originalKPIs.cities;
+    if(kpiCitMeta) kpiCitMeta.textContent = "Unique locations";
+    if(kpiOwnVal) kpiOwnVal.textContent = originalKPIs.owners;
+    if(kpiOwnMeta) kpiOwnMeta.textContent = "Active assignees";
+
+    mkDonut('cSrc', originalCharts.cSrc.labels, originalCharts.cSrc.values, originalCharts.cSrc.colors);
+    updateDonutLegend('cSrc', originalCharts.cSrc.labels, originalCharts.cSrc.values, originalCharts.cSrc.colors);
+    
+    mkDonut('cStg', originalCharts.cStg.labels, originalCharts.cStg.values, originalCharts.cStg.colors);
+    updateDonutLegend('cStg', originalCharts.cStg.labels, originalCharts.cStg.values, originalCharts.cStg.colors);
+    
+    mkLine('cMonth', originalCharts.cMonth.labels, originalCharts.cMonth.values);
+    mkHBar('cOwner', originalCharts.cOwner.labels, originalCharts.cOwner.values);
+    mkVBar('cCamp', originalCharts.cCamp.labels, originalCharts.cCamp.values, PALETTE.slice(0,8));
+    
+    renderStaticBarList('cities', originalCharts.cities, 'red');
+    renderStaticBarList('courses', originalCharts.courses, '');
+    return;
+  }
+
+  const total = filteredData.length;
+  const converted = filteredData.filter(r => (r['Lead Stage']||'').toLowerCase() === 'converted').length;
+  const hot = filteredData.filter(r => (r['Lead Stage']||'').toLowerCase() === 'hot').length;
+  const citiesSet = new Set(filteredData.map(r => r['City']).filter(Boolean));
+  const ownersSet = new Set(filteredData.map(r => r['Owner']).filter(Boolean));
+
+  if(kpiTotalVal) kpiTotalVal.textContent = total.toLocaleString();
+  if(kpiTotalMeta) kpiTotalMeta.textContent = "Filtered leads";
+  if(kpiConvVal) kpiConvVal.textContent = converted.toLocaleString();
+  if(kpiConvMeta) kpiConvMeta.textContent = total > 0 ? `${((converted/total)*100).toFixed(1)}% conversion rate` : '0.0% conversion rate';
+  if(kpiHotVal) kpiHotVal.textContent = hot.toLocaleString();
+  if(kpiHotMeta) kpiHotMeta.textContent = total > 0 ? `${((hot/total)*100).toFixed(1)}% of filtered leads` : '0.0% of total leads';
+  if(kpiCitVal) kpiCitVal.textContent = citiesSet.size.toLocaleString();
+  if(kpiCitMeta) kpiCitMeta.textContent = "Unique locations";
+  if(kpiOwnVal) kpiOwnVal.textContent = ownersSet.size.toLocaleString();
+  if(kpiOwnMeta) kpiOwnMeta.textContent = "Active assignees";
+
+  const srcFreq = freq(filteredData, 'Lead Source').slice(0, 7);
+  const stgFreq = freq(filteredData, 'Lead Stage').slice(0, 8);
+  
+  const srcLabels = srcFreq.map(e => e[0]);
+  const srcValues = srcFreq.map(e => e[1]);
+  mkDonut('cSrc', srcLabels, srcValues, PALETTE);
+  updateDonutLegend('cSrc', srcLabels, srcValues, PALETTE);
+  
+  const stgLabels = stgFreq.map(e => e[0]);
+  const stgValues = stgFreq.map(e => e[1]);
+  mkDonut('cStg', stgLabels, stgValues, STAGE_COLORS);
+  updateDonutLegend('cStg', stgLabels, stgValues, STAGE_COLORS);
+  
+  const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthMap = {};
+  filteredData.forEach(r => { const m = r['Month']; if(m) monthMap[m] = (monthMap[m]||0)+1; });
+  const monthLabels = monthOrder.filter(m => monthMap[m]);
+  const monthValues = monthLabels.map(m => monthMap[m]||0);
+  mkLine('cMonth', monthLabels, monthValues);
+  
+  const ownerFreq = freq(filteredData, 'Owner').slice(0, 10);
+  mkHBar('cOwner', ownerFreq.map(e => e[0]), ownerFreq.map(e => e[1]));
+  
+  const campFreq = freq(filteredData, 'Source Campaign').slice(0, 8);
+  mkVBar('cCamp', campFreq.map(e => e[0]), campFreq.map(e => e[1]), PALETTE.slice(0,8));
+  
+  const cityFreq = freq(filteredData, 'City').slice(0, 8);
+  renderDynamicBarList('cities', cityFreq, 'red');
+  
+  const courseFreq = freq(filteredData, 'Course Interested In').slice(0, 8);
+  renderDynamicBarList('courses', courseFreq, '');
+}
+
+function applyFilters() {
+  const month   = document.getElementById('filterMonth').value;
+  const source  = document.getElementById('filterSource').value;
+  const stage   = document.getElementById('filterStage').value;
+  const owner   = document.getElementById('filterOwner').value;
+  const college = document.getElementById('filterCollege').value;
+  const course  = document.getElementById('filterCourse').value;
+  
+  const isAnyFilterActive = month || source || stage || owner || college || course;
+  
+  filteredData = rawData.filter(r => {
+    if (month   && r['Month']               !== month)   return false;
+    if (source  && r['Lead Source']         !== source)  return false;
+    if (stage   && r['Lead Stage']          !== stage)   return false;
+    if (owner   && r['Owner']               !== owner)   return false;
+    if (college && r['College']             !== college) return false;
+    if (course  && r['Course Interested In'] !== course)  return false;
+    return true;
+  });
+  
+  rawData.forEach(r => {
+    r._tr.style.display = filteredData.includes(r) ? '' : 'none';
+  });
+  
+  const recordCountEl = document.getElementById('recordCount');
+  if (recordCountEl) {
+    if (isAnyFilterActive) {
+      recordCountEl.innerHTML = `Showing <b>${filteredData.length}</b> filtered records (of 200)`;
+    } else {
+      recordCountEl.innerHTML = `Total Records: <b>15,030</b> (showing top 200)`;
+    }
+  }
+  
+  updateKPIsAndCharts(isAnyFilterActive);
+}
+
+function populateFilters(data) {
+  const sets = {month:new Set(), source:new Set(), stage:new Set(), owner:new Set(), college:new Set(), course:new Set()};
+  data.forEach(r => {
+    sets.month.add(r['Month']);
+    sets.source.add(r['Lead Source']);
+    sets.stage.add(r['Lead Stage']);
+    sets.owner.add(r['Owner']);
+    sets.college.add(r['College']);
+    sets.course.add(r['Course Interested In']);
+  });
+  fillSelect('filterMonth',   [...sets.month].filter(Boolean).sort());
+  fillSelect('filterSource',  [...sets.source].filter(Boolean).sort());
+  fillSelect('filterStage',   [...sets.stage].filter(Boolean).sort());
+  fillSelect('filterOwner',   [...sets.owner].filter(Boolean).sort());
+  fillSelect('filterCollege', [...sets.college].filter(Boolean).sort());
+  fillSelect('filterCourse',  [...sets.course].filter(Boolean).sort());
+
+  ['filterMonth','filterSource','filterStage','filterOwner','filterCollege','filterCourse'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.onchange = applyFilters;
+  });
+}
+
+function fillSelect(id, values) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const first = sel.options[0];
+  sel.innerHTML = '';
+  sel.appendChild(first);
+  values.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+}
+
+function resetFilters() {
+  ['filterMonth','filterSource','filterStage','filterOwner','filterCollege','filterCourse'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex=0;
+  });
+  applyFilters();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  parseTableData();
+  populateFilters(rawData);
+  updateKPIsAndCharts(false);
+});
 </script>
 </body>
 </html>
